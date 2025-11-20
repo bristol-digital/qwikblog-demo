@@ -3,24 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'My Site')</title>
+    <title>@yield('title', 'My Blog')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
-<nav class="bg-white shadow">
+<body class="bg-gray-50">
+{{-- Navigation --}}
+<nav class="bg-white shadow-sm">
     <div class="container mx-auto px-4 py-4">
-        <a href="/" class="text-xl font-bold">My Site</a>
-        <a href="/blog" class="ml-4 text-gray-600 hover:text-gray-900">Blog</a>
+        <div class="flex items-center justify-between">
+            <a href="/" class="text-xl font-bold text-gray-800">My Site</a>
+            <div class="space-x-6">
+                <a href="/" class="text-gray-600 hover:text-gray-900">Home</a>
+                <a href="/blog" class="text-gray-600 hover:text-gray-900">Blog</a>
+            </div>
+        </div>
     </div>
 </nav>
 
+{{-- Main Content --}}
 <main>
     @yield('content')
 </main>
 
-<footer class="mt-16 py-8 bg-gray-100">
+{{-- Footer --}}
+<footer class="mt-16 py-8 bg-gray-800 text-white">
     <div class="container mx-auto px-4 text-center">
-        <p>&copy; {{ date('Y') }} My Site</p>
+        <p>&copy; {{ date('Y') }} My Blog. All rights reserved.</p>
     </div>
 </footer>
 </body>

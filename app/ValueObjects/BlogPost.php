@@ -1,6 +1,6 @@
 <?php
 
-namespace YourName\QwikBlog\ValueObjects;
+namespace App\ValueObjects;
 
 use Illuminate\Support\Str;
 use Carbon\Carbon;
