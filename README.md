@@ -4,12 +4,12 @@ A simple, file-based blog system for Laravel with Tailwind CSS.
 
 ## Installation
 ```bash
-composer require yourname/qwikblog
+composer require bristol-digital/qwikblog
 ```
 
 ## Requirements
 
-- Laravel 10+ or 11+
+- Laravel 10+
 - Tailwind CSS (for default styling)
 
 ## Setup
@@ -33,7 +33,7 @@ mkdir resources/posts
 ```js
 content: [
     './resources/**/*.blade.php',
-    './vendor/yourname/qwikblog/src/resources/**/*.blade.php',
+    './vendor/bristol-digital/qwikblog/src/resources/**/*.blade.php',
 ],
 plugins: [
     require('@tailwindcss/typography'),
@@ -55,7 +55,8 @@ The blog automatically uses your app's layout. Just create posts:
 title: My First Blog Post
 subtitle: An introduction to our new blog
 category: Announcements
-hero_image: /images/hero-1.jpg
+hero_image: /images/blog/hero-1.jpg
+summary: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer porttitor nisi nec augue tincidunt, non placerat libero commodo. Sed pretium, mauris eget cursus ultricies, ipsum urna lacinia eros, vel dignissim justo lorem vel arcu.
 ---
 
 Your content here in **Markdown**.

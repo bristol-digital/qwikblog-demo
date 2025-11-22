@@ -1,58 +1,85 @@
 @extends('app')
-
 @section('title', 'Blog')
-
 @section('content')
-    <div class="container mx-auto px-4 py-12">
-        <h1 class="text-4xl font-bold text-gray-900 mb-12">Blog</h1>
 
-        {{-- Posts Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            @forelse($posts as $post)
-                <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition duration-300">
-                    <a href="{{ route('blog.show', $post->slug) }}" class="block">
-                        @if($post->heroImage)
-                            <img src="{{ $post->heroImage }}"
-                                 alt="{{ $post->title }}"
-                                 class="w-full h-48 object-cover">
-                        @else
-                            <div class="w-full h-48 bg-gradient-to-br from-blue-500 to-purple-600"></div>
-                        @endif
+    <section class="text-gray-600 body-font">
+        <div class="container max-w-7xl px-5 pb-24 mx-auto">
 
-                        <div class="p-6">
-                        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                            {{ $post->category }}
-                        </span>
+            <h1 class="text-4xl font-thin my-5">Your {{ config('app.name') }} Blog</h1>
 
-                            <h2 class="text-2xl font-bold text-gray-900 mt-2 mb-3 hover:text-blue-600 transition">
-                                {{ $post->title }}
-                            </h2>
+            <div class="flex flex-wrap -m-4">
 
-                            <p class="text-gray-600 mb-4">
-                                {{ $post->subtitle }}
-                            </p>
+                @forelse($posts as $post)
 
-                            <div class="flex items-center justify-between text-sm text-gray-500">
-                                <time datetime="{{ $post->date->format('Y-m-d') }}">
-                                    {{ $post->date->format('M j, Y') }}
-                                </time>
-                                <span class="text-blue-600 font-medium">Read more →</span>
+                    <div class="p-4 sm:w-1/2 lg:w-1/3 bg">
+                        <div class="
+                        h-full border-2 bg-white border-gray-200 border-opacity-60 rounded-lg overflow-hidden
+                        hover:ease-in-out hover:opacity-95 duration-300 hover:transition hover:scale-105
+                        hover:cursor-pointer
+                    "
+                             x-data
+                             @click="window.location.href = '/blog/{{ $post->slug }}'"
+                        >
+
+                            <div class="relative rounded-lg h-64 overflow-hidden">
+
+                                <div class="absolute inset-0">
+                                    <img
+                                        src="{{ $post->heroImage }}"
+                                        class="w-full h-full object-cover blur-sm opacity-60"
+                                    >
+                                </div>
+
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <img
+                                        src="{{ $post->heroImage }}"
+                                        class="h-full object-contain"
+                                    >
+                                </div>
+
+                                <div class="absolute inset-0 flex items-end">
+                                    <div class="p-4">
+                                        <h1 class="text-white text-2xl font-thin
+                                           inline-block px-4 py-2 rounded-lg
+                                           bg-black/50 backdrop-blur-sm"
+                                        >
+                                            {{ $post->title }}
+                                        </h1>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="p-6">
+                                <div class="flex items-center justify-between">
+                                    <h2 class="tracking-tight text-xs title-font font-thin text-gray-800 mb-1">
+                                        {{ $post->category }}
+                                    </h2>
+
+                                    <div class="flex items-center space-x-4 tracking-tight text-xs title-font font-thin text-gray-800 mb-1">
+                                        <time datetime="{{ $post->date->format('Y-m-d') }}">
+                                            {{ $post->date->format('jS M Y') }}
+                                        </time>
+                                    </div>
+                                </div>
+
+                                <h1 class="font-thin text-2xl text-gray-900 mb-3">{{ $post->subtitle ?: $post->title }}</h1>
+
+                                <p class="font-light text-gray-500">{{ $post->summary }}</p>
+
+                                <div class="flex justify-end bottom-0 flex-wrap mt-5">
+                                    <a href="/blog/{{ $post->slug }}" class="text-blue-900 font-thin text-lg hover:underline italic inline-flex items-center md:mb-2 lg:mb-0 hover:ease-in-out hover:opacity-95 duration-300 hover:transition hover:scale-105">
+                                        Read more &raquo;
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                    </a>
-                </article>
-            @empty
-                <div class="col-span-full text-center py-12">
-                    <p class="text-gray-500 text-lg">No blog posts yet. Create your first post!</p>
-                </div>
-            @endforelse
-        </div>
+                    </div>
+                @endforeach
 
-        {{-- Pagination --}}
-        @if($posts->hasPages())
-            <div class="mt-12">
-                {{ $posts->links() }}
             </div>
-        @endif
-    </div>
+
+        </div>
+    </section>
+
 @endsection

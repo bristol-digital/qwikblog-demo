@@ -1,16 +1,14 @@
 {
-    "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "bristol-digital/qwikblog",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A simple, file-based blog system for Laravel with Tailwind CSS.",
     "keywords": [
         "laravel",
-        "framework"
+        "blog"
     ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "bristol-digital/spanish-dances": "^1.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1"
     },
@@ -29,7 +27,7 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
-            "BristolDigital\\SpanishDance\\": "src/"
+            "BristolDigital\\QwikBlog\\": "src/"
         }
     },
     "autoload-dev": {
