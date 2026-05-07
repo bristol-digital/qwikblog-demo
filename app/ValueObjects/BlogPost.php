@@ -2,59 +2,166 @@
 
 namespace App\ValueObjects;
 
+use App\Services\BlogImageService;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class BlogPost
 {
+    /**
+     * @param  array<int,string>  $categories
+     * @param  array<int,string>  $tags
+     */
     public function __construct(
         public string $slug,
         public string $title,
         public string $subtitle,
         public string $summary,
-        public string $category,
+        public array $categories,
+        public array $tags,
         public string $heroImage,
-        public string $content,
+        public string $author,
         public Carbon $date,
+        public string $content,
         public string $filepath,
     ) {}
+
+    public function isPublished(): bool
+    {
+        return $this->date->lte(Carbon::now());
+    }
+
+    public function isScheduled(): bool
+    {
+        return !$this->isPublished();
+    }
+
+    public function effectiveHeroImage(): string
+    {
+        if ($this->heroImage !== '') {
+            return $this->heroImage;
+        }
+        $images = BlogImageService::getImagesForPost($this->slug);
+        return $images[0]['path'] ?? '';
+    }
+
+    public function galleryImages(): array
+    {
+        return BlogImageService::getImagesForPost($this->slug);
+    }
+
+    public function displayImages(): array
+    {
+        $gallery = $this->galleryImages();
+        if (count($gallery) > 0) {
+            return $gallery;
+        }
+        if ($this->heroImage !== '') {
+            return [['path' => $this->heroImage]];
+        }
+        return [];
+    }
 
     public static function fromFile(string $filepath): self
     {
         $filename = basename($filepath, '.md');
-        $content = file_get_contents($filepath);
+        $raw = file_get_contents($filepath);
 
-        // Extract front matter
-        preg_match('/^---\s*\n(.*?)\n---\s*\n(.*)$/s', $content, $matches);
+        preg_match('/^---\s*\n(.*?)\n---\s*\n?(.*)$/s', $raw, $matches);
 
         if (!$matches) {
             throw new \Exception("Invalid post format: {$filepath}");
         }
 
         $frontMatter = self::parseFrontMatter($matches[1]);
-        $markdown = $matches[2];
+        $markdown = $matches[2] ?? '';
 
-        // Parse date from filename (YYYY-MM-DD-slug.md)
-        preg_match('/^(\d{4}-\d{2}-\d{2})-(.+)$/', $filename, $dateMatches);
-
-        if (!$dateMatches) {
+        if (!preg_match('/^(\d{4}-\d{2}-\d{2})-(.+)$/', $filename, $dateMatches)) {
             throw new \Exception("Invalid filename format. Expected: YYYY-MM-DD-slug.md");
         }
 
-        $date = Carbon::parse($dateMatches[1]);
+        $date = isset($frontMatter['date']) && $frontMatter['date'] !== ''
+            ? Carbon::parse($frontMatter['date'])
+            : Carbon::parse($dateMatches[1]);
+
         $slug = $dateMatches[2];
+
+        // Categories: prefer the new plural key, fall back to the legacy
+        // singular `category:` so older posts keep working as-is.
+        $categoriesRaw = $frontMatter['categories'] ?? $frontMatter['category'] ?? '';
+        $categories = self::parseList($categoriesRaw);
+
+        $tags = self::parseList($frontMatter['tags'] ?? '');
 
         return new self(
             slug: $slug,
             title: $frontMatter['title'] ?? 'Untitled',
             subtitle: $frontMatter['subtitle'] ?? '',
             summary: $frontMatter['summary'] ?? '',
-            category: $frontMatter['category'] ?? 'Uncategorized',
+            categories: $categories,
+            tags: $tags,
             heroImage: $frontMatter['hero_image'] ?? '',
-            content: Str::markdown($markdown),
+            author: $frontMatter['author'] ?? '',
             date: $date,
+            content: Str::markdown($markdown),
             filepath: $filepath,
         );
+    }
+
+    public static function buildFilename(Carbon $date, string $slug): string
+    {
+        return $date->format('Y-m-d') . '-' . Str::slug($slug) . '.md';
+    }
+
+    /**
+     * Render data as markdown-with-front-matter ready to write to disk.
+     * The body is the raw markdown source — do NOT pass already-rendered HTML.
+     */
+    public static function toMarkdown(array $data, string $body): string
+    {
+        $lines = ['---'];
+
+        // Order chosen so the file shape stays familiar / reads well at a glance.
+        $fields = ['title', 'subtitle', 'summary', 'categories', 'tags', 'hero_image', 'author', 'date'];
+        foreach ($fields as $key) {
+            $value = $data[$key] ?? null;
+            // Categories and tags arrive as arrays — flatten to comma-separated YAML.
+            if (is_array($value)) {
+                $value = implode(', ', $value);
+            }
+            $value = (string) ($value ?? '');
+            if ($value !== '') {
+                $lines[] = $key . ': ' . self::yamlEscape($value);
+            }
+        }
+
+        $lines[] = '---';
+
+        return implode("\n", $lines) . "\n" . trim($body) . "\n";
+    }
+
+    public function rawBody(): string
+    {
+        $raw = file_get_contents($this->filepath);
+        if (preg_match('/^---\s*\n(.*?)\n---\s*\n?(.*)$/s', $raw, $matches)) {
+            return $matches[2] ?? '';
+        }
+        return $raw;
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    public static function parseList(string $value): array
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return [];
+        }
+        // Strip YAML-style brackets if present: "[a, b, c]"
+        $value = trim($value, "[]");
+        $parts = array_map('trim', explode(',', $value));
+        return array_values(array_filter($parts, fn($t) => $t !== ''));
     }
 
     private static function parseFrontMatter(string $yaml): array
@@ -65,10 +172,35 @@ class BlogPost
         foreach ($lines as $line) {
             if (strpos($line, ':') !== false) {
                 [$key, $value] = explode(':', $line, 2);
-                $data[trim($key)] = trim($value);
+                $data[trim($key)] = trim(self::yamlUnquote($value));
             }
         }
 
         return $data;
+    }
+
+    private static function yamlEscape(string $value): string
+    {
+        if (preg_match('/[:#\n"\'\\\\]/', $value) || trim($value) !== $value) {
+            return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $value) . '"';
+        }
+        return $value;
+    }
+
+    private static function yamlUnquote(string $value): string
+    {
+        $value = trim($value);
+        if (strlen($value) >= 2) {
+            $first = $value[0];
+            $last = $value[strlen($value) - 1];
+            if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+                $inner = substr($value, 1, -1);
+                if ($first === '"') {
+                    $inner = str_replace(['\\"', '\\\\'], ['"', '\\'], $inner);
+                }
+                return $inner;
+            }
+        }
+        return $value;
     }
 }

@@ -1,118 +1,103 @@
 # QwikBlog
 
-A simple, file-based blog system for Laravel with Tailwind CSS.
+A simple, file-based blog for Laravel — headless front-end + lightweight admin
+with a Livewire-powered image gallery. No database required. Posts live in
+`resources/posts/` as Markdown files with YAML front matter.
 
-## Installation
-```bash
-composer require bristol-digital/qwikblog
+## Front-end routes
+
+| Route          | Description     |
+| -------------- | --------------- |
+| `/blog`        | Post index      |
+| `/blog/{slug}` | Single post     |
+
+Views live at `resources/views/blog/index.blade.php` and `show.blade.php`.
+Both extend the host site's `app.blade.php` layout. They are intentionally
+basic so the host site can restyle them.
+
+## Admin
+
+A small, session-authenticated admin lives at `/admin`.
+
+Set credentials in `.env`:
+
+```dotenv
+ADMIN_USERNAME=your-username
+ADMIN_PASSWORD=your-password
 ```
 
-## Requirements
+If either variable is empty, login is refused — there is no default password.
 
-- Laravel 10+
-- Tailwind CSS (for default styling)
+| Route                          | Description           |
+| ------------------------------ | --------------------- |
+| `/admin/login`                 | Login form            |
+| `/admin` → `/admin/posts`      | Posts index           |
+| `/admin/posts/create`          | New post              |
+| `/admin/posts/{slug}/edit`     | Edit post             |
+| `/admin/posts/{slug}/images`   | Manage images (Livewire) |
 
-## Setup
+The admin uses session auth via the `AdminAuth` middleware (alias `admin`
+registered in `bootstrap/app.php`). Sessions are file-based by default
+(`SESSION_DRIVER=file`), so no database is required.
 
-1. Publish the config:
-```bash
-php artisan vendor:publish --tag=qwikblog-config
-```
+## Post fields
 
-2. Create posts directory:
-```bash
-mkdir resources/posts
-```
+Posts are stored as `resources/posts/YYYY-MM-DD-slug.md`. Front matter:
 
-3. Set your layout in `config/qwikblog.php`:
-```php
-'layout' => 'layouts.app', // Your main layout
-```
-
-4. Make sure your `tailwind.config.js` includes the package views:
-```js
-content: [
-    './resources/**/*.blade.php',
-    './vendor/bristol-digital/qwikblog/src/resources/**/*.blade.php',
-],
-plugins: [
-    require('@tailwindcss/typography'),
-],
-```
-
-5. Install Tailwind Typography plugin:
-```bash
-npm install @tailwindcss/typography
-```
-
-## Usage
-
-The blog automatically uses your app's layout. Just create posts:
-
-**resources/posts/2024-11-20-my-first-post.md:**
-```markdown
+```yaml
 ---
-title: My First Blog Post
-subtitle: An introduction to our new blog
+title: My First Post
+subtitle: An optional subtitle
+summary: Short excerpt — used on listings.
 category: Announcements
-hero_image: /images/blog/hero-1.jpg
-summary: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer porttitor nisi nec augue tincidunt, non placerat libero commodo. Sed pretium, mauris eget cursus ultricies, ipsum urna lacinia eros, vel dignissim justo lorem vel arcu.
+hero_image: /images/blog/my-first-post/1.jpg
+author: Jane Editor
+date: 2024-11-15
 ---
 
-Your content here in **Markdown**.
+Markdown body goes here.
 ```
 
-Visit `/blog` to see all posts.
+The admin writes this format automatically.
 
-## Customization
+## Image gallery
 
-### Use Your Own Layout
+Each post has its own image folder at `public/images/blog/{slug}/`. Images
+are numbered `1.jpg`, `2.jpg`, … and ordering is set by the numeric filename.
 
-Edit `config/qwikblog.php`:
-```php
-'layout' => 'layouts.my-custom-layout',
-```
+The Livewire gallery (`/admin/posts/{slug}/images`) lets you:
 
-### Customize Views
+- Drag-and-drop upload (multi-select, JPG/PNG/GIF, max 20 MB each)
+- Resize and re-orient automatically (max 1600×1200, 85% quality JPG; GIFs
+  pass through untouched so animations are preserved)
+- Reorder images by drag
+- Delete individual images
+- Copy a path to the clipboard for pasting into the post's `hero_image` field
 
-Publish and edit the views:
+Images are kept independent of the `hero_image` front-matter field — set
+that field manually in the post form to choose which image is the hero.
+The gallery's "first" image is just the first one numerically; it is **not**
+automatically used as the hero.
+
+When a post is renamed, its image folder moves with it. When a post is
+deleted, its image folder is deleted too.
+
+## Cache
+
+Posts are cached for an hour. To clear manually:
+
 ```bash
-php artisan vendor:publish --tag=qwikblog-views
+php artisan blog:refresh
 ```
 
-Views will be in `resources/views/vendor/qwikblog/`.
+The admin clears this cache automatically on every create/update/delete.
 
-### Change Route Prefix
-```php
-'route' => [
-    'prefix' => 'articles', // Now /articles instead of /blog
-    'name_prefix' => 'articles.',
-],
-```
+## Dependencies
 
-### Use as Partials (No Layout)
+- `laravel/framework` ^12
+- `livewire/livewire` ^3.7 (used by the admin image gallery)
 
-If you want to include blog views in your own pages without a layout:
-```php
-'layout' => null,
-```
-
-Then in your own views:
-```blade
-@extends('my-layout')
-
-@section('content')
-    @include('qwikblog::blog.index')
-@endsection
-```
-
-## Tailwind Classes
-
-The package uses standard Tailwind classes. To customize colors:
-
-- Primary color: Change `blue-600` to your brand color
-- Just search and replace in published views
-
-## License
-
-MIT
+CDN-loaded by the admin chrome only (no Vite build required for the admin):
+- Tailwind (Play CDN)
+- Alpine.js
+- Sortable.js (gallery reordering)

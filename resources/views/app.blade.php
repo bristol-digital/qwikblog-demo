@@ -15,6 +15,7 @@
             <div class="space-x-6">
                 <a href="/" class="text-gray-600 hover:text-gray-900">Home</a>
                 <a href="/blog" class="text-gray-600 hover:text-gray-900">Blog</a>
+                <a href="/admin" class="text-gray-400 hover:text-gray-700 text-sm">Admin</a>
             </div>
         </div>
     </div>

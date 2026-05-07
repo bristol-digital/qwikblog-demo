@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\BlogService;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class BlogController extends Controller
@@ -11,23 +12,44 @@ class BlogController extends Controller
         private BlogService $blogService
     ) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $posts = $this->blogService->getAllPosts();
+        $posts = $this->blogService->getPublishedPosts();
+
+        // Optional ?category= and ?tag= filters. They stack: passing both
+        // narrows to posts that match BOTH (intersection, not union).
+        $activeCategory = $request->query('category');
+        $activeTag = $request->query('tag');
+
+        if ($activeCategory) {
+            $posts = $posts->filter(fn($p) => in_array($activeCategory, $p->categories, true));
+        }
+        if ($activeTag) {
+            $posts = $posts->filter(fn($p) => in_array($activeTag, $p->tags, true));
+        }
 
         return view('blog.index', [
-            'posts' => $posts->paginate(12),
+            'posts' => $posts->values()->paginate(12),
+            'allCategories' => $this->blogService->getPublishedCategories(),
+            'allTags' => $this->blogService->getPublishedTags(),
+            'activeCategory' => $activeCategory,
+            'activeTag' => $activeTag,
         ]);
     }
 
     public function show(string $slug): View
     {
-        $post = $this->blogService->getPostBySlug($slug);
+        // Logged-in admins can preview scheduled posts via the public URL.
+        $isAdmin = session('admin_authenticated');
+
+        $post = $isAdmin
+            ? $this->blogService->getPostBySlug($slug)
+            : $this->blogService->getPublishedPostBySlug($slug);
 
         abort_if(!$post, 404);
 
-        $adjacent = $this->blogService->getAdjacentPosts($post);
-        $allPosts = $this->blogService->getAllPosts();
+        $adjacent = $this->blogService->getAdjacentPublishedPosts($post);
+        $allPosts = $this->blogService->getPublishedPosts();
 
         return view('blog.show', [
             'post' => $post,
