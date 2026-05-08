@@ -23,7 +23,7 @@ class BlogService
     {
         return Cache::remember(
             'blog.all_posts',
-            config('qwikblog.cache_duration', 3600),
+            (int) config('qwikblog.cache_duration', 3600),
             function () {
                 File::ensureDirectoryExists($this->postsPath);
 
@@ -70,51 +70,173 @@ class BlogService
     }
 
     /* ---------------------------------------------------------------------
-     | Taxonomy — used by both admin (suggestion lists) and front-end (filters)
+     | Taxonomy
      | -------------------------------------------------------------------*/
 
-    /**
-     * Distinct categories from every post on disk (admin scope —
-     * includes scheduled posts so the form suggests them).
-     *
-     * @return array<int,string>
-     */
     public function getAllCategories(): array
     {
         return $this->collectFrom($this->getAllPosts(), 'categories');
     }
 
-    /**
-     * @return array<int,string>
-     */
     public function getAllTags(): array
     {
         return $this->collectFrom($this->getAllPosts(), 'tags');
     }
 
-    /**
-     * Distinct categories from published posts only — these feed the public
-     * blog index's filter chips so visitors don't click ghost filters that
-     * lead to empty result sets.
-     *
-     * @return array<int,string>
-     */
     public function getPublishedCategories(): array
     {
         return $this->collectFrom($this->getPublishedPosts(), 'categories');
     }
 
-    /**
-     * @return array<int,string>
-     */
     public function getPublishedTags(): array
     {
         return $this->collectFrom($this->getPublishedPosts(), 'tags');
     }
 
+    public function getPublishedCategoryCounts(): array
+    {
+        return $this->countTermsIn($this->getPublishedPosts(), 'categories');
+    }
+
+    public function getPublishedTagCounts(): array
+    {
+        return $this->countTermsIn($this->getPublishedPosts(), 'tags');
+    }
+
+    public function getPublishedAuthors(): array
+    {
+        return $this->getPublishedPosts()
+            ->pluck('author')
+            ->filter(fn($a) => is_string($a) && trim($a) !== '')
+            ->unique()
+            ->sort(SORT_FLAG_CASE | SORT_NATURAL)
+            ->values()
+            ->all();
+    }
+
+    /* ---------------------------------------------------------------------
+     | Archive
+     | -------------------------------------------------------------------*/
+
     /**
-     * @return array<int,string>
+     * Hierarchical archive map of published posts:
+     *   [2024 => [11 => 5, 10 => 3, 9 => 2], 2023 => [12 => 4, ...]]
+     *
+     * Years sorted desc (newest first), months within each year also desc.
+     * Returns [] when no published posts. Empty when called means the view
+     * should hide the archive nav entirely — that's the "no archive nav
+     * unless there are some" convention. Views can apply a stricter
+     * threshold (e.g. only show when 2+ months are represented) by counting
+     * the entries themselves; the service just returns the raw shape.
+     *
+     * @return array<int,array<int,int>>
      */
+    public function getPublishedArchive(): array
+    {
+        $archive = [];
+        foreach ($this->getPublishedPosts() as $post) {
+            $year = (int) $post->date->year;
+            $month = (int) $post->date->month;
+            $archive[$year][$month] = ($archive[$year][$month] ?? 0) + 1;
+        }
+
+        krsort($archive);
+        foreach ($archive as &$months) {
+            krsort($months);
+        }
+
+        return $archive;
+    }
+
+    /**
+     * Posts published in a given year, optionally narrowed to a month.
+     */
+    public function getPostsByDate(int $year, ?int $month = null): Collection
+    {
+        return $this->getPublishedPosts()
+            ->filter(function (BlogPost $post) use ($year, $month) {
+                if ((int) $post->date->year !== $year) {
+                    return false;
+                }
+                if ($month !== null && (int) $post->date->month !== $month) {
+                    return false;
+                }
+                return true;
+            })
+            ->values();
+    }
+
+    /* ---------------------------------------------------------------------
+     | Search
+     | -------------------------------------------------------------------*/
+
+    public function searchPublishedPosts(string $query): Collection
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return collect();
+        }
+
+        $terms = preg_split('/\s+/', mb_strtolower($query)) ?: [];
+        $terms = array_filter($terms, fn($t) => $t !== '');
+        if (empty($terms)) {
+            return collect();
+        }
+
+        return $this->getPublishedPosts()
+            ->filter(function (BlogPost $post) use ($terms) {
+                $haystack = mb_strtolower(implode(' ', [
+                    $post->title,
+                    $post->subtitle,
+                    $post->summary,
+                    $post->author,
+                    implode(' ', $post->categories),
+                    implode(' ', $post->tags),
+                    strip_tags($post->content),
+                ]));
+
+                foreach ($terms as $term) {
+                    if (!str_contains($haystack, $term)) {
+                        return false;
+                    }
+                }
+                return true;
+            })
+            ->values();
+    }
+
+    /* ---------------------------------------------------------------------
+     | Related posts
+     | -------------------------------------------------------------------*/
+
+    /**
+     * Tag and category weights are configurable via qwikblog.related.*.
+     * Default 2:1 — tags are more discriminating per shared term.
+     */
+    public function getRelatedPosts(BlogPost $post, ?int $limit = null): Collection
+    {
+        $tagWeight = (int) config('qwikblog.related.tag_weight', 2);
+        $categoryWeight = (int) config('qwikblog.related.category_weight', 1);
+        $limit ??= (int) config('qwikblog.related.limit', 3);
+
+        return $this->getPublishedPosts()
+            ->reject(fn(BlogPost $p) => $p->slug === $post->slug)
+            ->map(function (BlogPost $p) use ($post, $tagWeight, $categoryWeight) {
+                $sharedCats = count(array_intersect($post->categories, $p->categories));
+                $sharedTags = count(array_intersect($post->tags, $p->tags));
+                $p->relatedScore = ($sharedTags * $tagWeight) + ($sharedCats * $categoryWeight);
+                return $p;
+            })
+            ->filter(fn(BlogPost $p) => $p->relatedScore > 0)
+            ->sortByDesc(fn(BlogPost $p) => [$p->relatedScore, $p->date->timestamp])
+            ->take($limit)
+            ->values();
+    }
+
+    /* ---------------------------------------------------------------------
+     | Internal helpers
+     | -------------------------------------------------------------------*/
+
     private function collectFrom(Collection $posts, string $field): array
     {
         return $posts
@@ -127,13 +249,28 @@ class BlogService
             ->all();
     }
 
+    private function countTermsIn(Collection $posts, string $field): array
+    {
+        $counts = [];
+        foreach ($posts as $post) {
+            foreach ($post->{$field} ?? [] as $term) {
+                if (!is_string($term) || trim($term) === '') {
+                    continue;
+                }
+                $counts[$term] = ($counts[$term] ?? 0) + 1;
+            }
+        }
+        ksort($counts, SORT_FLAG_CASE | SORT_NATURAL);
+        return $counts;
+    }
+
     public function clearCache(): void
     {
         Cache::forget('blog.all_posts');
     }
 
     /* ---------------------------------------------------------------------
-     | CRUD — used by the admin
+     | CRUD
      | -------------------------------------------------------------------*/
 
     public function create(array $data): ?string
@@ -216,10 +353,6 @@ class BlogService
         return $deleted;
     }
 
-    /* ---------------------------------------------------------------------
-     | Internal helpers
-     | -------------------------------------------------------------------*/
-
     private function refreshBlog(): void
     {
         Artisan::call('blog:refresh');
@@ -258,8 +391,6 @@ class BlogService
 
     private function buildPayload(array $data, Carbon $date): array
     {
-        // Categories and tags arrive as arrays from AdminController (which
-        // splits the comma-separated form input). Other scalars trim/cast as before.
         return [
             'title' => trim($data['title'] ?? ''),
             'subtitle' => trim($data['subtitle'] ?? ''),

@@ -6,6 +6,7 @@ use App\Services\BlogImageService;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
+#[\AllowDynamicProperties]
 class BlogPost
 {
     /**
@@ -62,6 +63,25 @@ class BlogPost
         return [];
     }
 
+    public function wordCount(): int
+    {
+        return str_word_count(strip_tags($this->content));
+    }
+
+    /**
+     * Estimated reading time. WPM defaults to qwikblog.reading_wpm config
+     * (200 by default — standard for prose). Pass an explicit $wpm to
+     * override per-call.
+     */
+    public function readingTime(?int $wpm = null): int
+    {
+        $wpm ??= (int) config('qwikblog.reading_wpm', 200);
+        if ($wpm <= 0) {
+            $wpm = 200;
+        }
+        return max(1, (int) ceil($this->wordCount() / $wpm));
+    }
+
     public static function fromFile(string $filepath): self
     {
         $filename = basename($filepath, '.md');
@@ -86,8 +106,6 @@ class BlogPost
 
         $slug = $dateMatches[2];
 
-        // Categories: prefer the new plural key, fall back to the legacy
-        // singular `category:` so older posts keep working as-is.
         $categoriesRaw = $frontMatter['categories'] ?? $frontMatter['category'] ?? '';
         $categories = self::parseList($categoriesRaw);
 
@@ -113,19 +131,13 @@ class BlogPost
         return $date->format('Y-m-d') . '-' . Str::slug($slug) . '.md';
     }
 
-    /**
-     * Render data as markdown-with-front-matter ready to write to disk.
-     * The body is the raw markdown source — do NOT pass already-rendered HTML.
-     */
     public static function toMarkdown(array $data, string $body): string
     {
         $lines = ['---'];
 
-        // Order chosen so the file shape stays familiar / reads well at a glance.
         $fields = ['title', 'subtitle', 'summary', 'categories', 'tags', 'hero_image', 'author', 'date'];
         foreach ($fields as $key) {
             $value = $data[$key] ?? null;
-            // Categories and tags arrive as arrays — flatten to comma-separated YAML.
             if (is_array($value)) {
                 $value = implode(', ', $value);
             }
@@ -158,7 +170,6 @@ class BlogPost
         if ($value === '') {
             return [];
         }
-        // Strip YAML-style brackets if present: "[a, b, c]"
         $value = trim($value, "[]");
         $parts = array_map('trim', explode(',', $value));
         return array_values(array_filter($parts, fn($t) => $t !== ''));

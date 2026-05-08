@@ -1,129 +1,169 @@
-{{--
-    Livewire root element — wire:poll triggers an automatic re-render every
-    30 seconds. Status badge ("Scheduled · in N min" → "Published") updates
-    without a page refresh.
---}}
-<div wire:poll.30s>
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Blog Posts</h1>
-        <a
-            href="{{ route('admin.posts.create') }}"
-            class="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900 transition-colors"
-        >
+<div wire:poll.30s class="space-y-6">
+
+    {{-- Header --}}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Posts</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ $publishedCount }} published &middot; {{ $scheduledCount }} scheduled &middot; {{ $totalCount }} total
+            </p>
+        </div>
+        <a href="{{ route('admin.posts.create') }}"
+           class="inline-flex items-center px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded text-sm font-medium transition-colors">
             + New Post
         </a>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="w-full">
+    {{-- Filter bar --}}
+    <div class="bg-white border border-gray-200 rounded-lg p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Search</label>
+                <input
+                    type="search"
+                    wire:model.live.debounce.300ms="search"
+                    placeholder="Title, summary, author..."
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900"
+                >
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                <select wire:model.live="category"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900">
+                    <option value="">All categories</option>
+                    @foreach($allCategories as $cat)
+                        <option value="{{ $cat }}">{{ $cat }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tag</label>
+                <select wire:model.live="tag"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900">
+                    <option value="">All tags</option>
+                    @foreach($allTags as $t)
+                        <option value="{{ $t }}">{{ $t }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select wire:model.live="status"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-900 focus:ring-1 focus:ring-blue-900">
+                    <option value="">All ({{ $totalCount }})</option>
+                    <option value="published">Published ({{ $publishedCount }})</option>
+                    <option value="scheduled">Scheduled ({{ $scheduledCount }})</option>
+                </select>
+            </div>
+
+        </div>
+
+        @if($hasFilters)
+            <div class="mt-3 flex items-center justify-between text-sm">
+                <span class="text-gray-600">
+                    Showing <strong>{{ $filteredCount }}</strong>
+                    of {{ $totalCount }} posts
+                </span>
+                <button wire:click="clearFilters"
+                        class="text-blue-900 hover:underline font-medium">
+                    Clear filters
+                </button>
+            </div>
+        @endif
+    </div>
+
+    {{-- Posts table --}}
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categories</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categories</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-            @forelse($posts as $post)
-                @php($postCategories = $post->categories ?? [])
-                @php($postTags = $post->tags ?? [])
-                <tr wire:key="post-{{ $post->slug }}" class="hover:bg-gray-50 {{ $post->isScheduled() ? 'bg-amber-50/30' : '' }}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div>{{ $post->date->format('Y-m-d') }}</div>
-                        <div class="text-xs text-gray-400">{{ $post->date->format('H:i') }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        @if($post->isScheduled())
-                            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-medium">
-                                Scheduled
-                            </span>
-                            <div class="text-xs text-gray-500 mt-1">{{ $post->date->diffForHumans() }}</div>
-                        @else
-                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
-                                Published
-                            </span>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="font-medium text-gray-900">{{ $post->title }}</div>
-                        <div class="text-sm text-gray-500">{{ \Illuminate\Support\Str::limit($post->summary, 80) }}</div>
-                        @if(count($postTags) > 0)
-                            <div class="mt-1 flex flex-wrap gap-1">
-                                @foreach($postTags as $tag)
-                                    <span class="text-xs bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">#{{ $tag }}</span>
-                                @endforeach
-                            </div>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {{ $post->author ?: '—' }}
-                    </td>
-                    <td class="px-6 py-4">
-                        @if(count($postCategories) > 0)
-                            <div class="flex flex-wrap gap-1">
-                                @foreach($postCategories as $cat)
-                                    <span class="text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded">{{ $cat }}</span>
-                                @endforeach
-                            </div>
-                        @else
-                            <span class="text-gray-400 text-xs">—</span>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <a
-                            href="{{ route('blog.show', $post->slug) }}"
-                            target="_blank"
-                            class="text-gray-500 hover:text-gray-700 mr-3"
-                            title="{{ $post->isScheduled() ? 'Preview (scheduled — public visitors see 404)' : 'View' }}"
-                        >
-                            {{ $post->isScheduled() ? 'Preview' : 'View' }}
-                        </a>
-                        <a
-                            href="{{ route('admin.posts.images', $post->slug) }}"
-                            class="text-blue-600 hover:text-blue-800 mr-3"
-                            title="Manage images"
-                        >
-                            Images ({{ count(\App\Services\BlogImageService::getImagesForPost($post->slug)) }})
-                        </a>
-                        <a
-                            href="{{ route('admin.posts.edit', $post->slug) }}"
-                            class="text-slate-700 hover:text-slate-900 mr-3"
-                        >
-                            Edit
-                        </a>
-                        <form
-                            method="POST"
-                            action="{{ route('admin.posts.destroy', $post->slug) }}"
-                            class="inline"
-                            onsubmit="return confirm('Delete this post and all its images? This cannot be undone.')"
-                        >
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-600 hover:text-red-800">
-                                Delete
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                        No posts yet.
-                        <a href="{{ route('admin.posts.create') }}" class="text-slate-700 hover:underline">
-                            Write your first post
-                        </a>
-                    </td>
-                </tr>
-            @endforelse
+                @forelse($posts as $post)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-gray-900">{{ $post->title }}</div>
+                            @if($post->subtitle)
+                                <div class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{{ $post->subtitle }}</div>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
+                            @if(count($post->categories) > 0)
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach($post->categories as $cat)
+                                        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{{ $cat }}</span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <span class="text-xs text-gray-400">&mdash;</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700">
+                            {{ $post->author ?: '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                            {{ $post->date->format('Y-m-d') }}
+                            @if($post->isScheduled())
+                                <div class="text-xs text-amber-700 mt-0.5">
+                                    {{ $post->date->diffForHumans() }}
+                                </div>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3">
+                            @if($post->isScheduled())
+                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                                    Scheduled
+                                </span>
+                            @else
+                                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                    Published
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                            <a href="{{ route('admin.posts.edit', $post->slug) }}"
+                               class="text-blue-900 hover:underline mr-3">Edit</a>
+                            <a href="{{ route('admin.posts.images', $post->slug) }}"
+                               class="text-blue-900 hover:underline mr-3">Images</a>
+                            <button wire:click="delete('{{ $post->slug }}')"
+                                    wire:confirm="Delete this post? This also removes its image folder."
+                                    class="text-red-700 hover:underline">Delete</button>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+                            @if($hasFilters)
+                                No posts match your filters.
+                                <button wire:click="clearFilters" class="text-blue-900 hover:underline ml-1">
+                                    Clear filters
+                                </button>
+                            @else
+                                No posts yet. <a href="{{ route('admin.posts.create') }}" class="text-blue-900 hover:underline">Create your first one</a>.
+                            @endif
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 
-    <p class="text-sm text-gray-500 mt-4">
-        Posts with a future date are scheduled — they go live automatically the moment the date passes.
-        This page refreshes itself every 30 seconds, so countdowns and statuses stay current.
-    </p>
+    {{-- Pagination --}}
+    @if($posts->hasPages())
+        <div>
+            {{ $posts->links() }}
+        </div>
+    @endif
+
 </div>

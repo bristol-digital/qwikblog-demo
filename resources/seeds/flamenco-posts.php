@@ -3,17 +3,21 @@
 /**
  * Flamenco demo content manifest.
  *
- * Run with: php artisan blog:import resources/seeds/flamenco-posts.php
+ * Run with: php artisan blog:import resources/seeds/flamenco-posts.php --overwrite
  *
- * 12 posts spread across four categories (Palos, Historia, Compás, Maestros)
- * with overlapping tags so filter chips show meaningful intersections. Bodies
- * are in English (educational); titles, subtitles and summaries lean Spanish
- * where it reads naturally — the way flamenco itself code-switches.
+ * 12 posts across 4 categories, with a deliberately tight tag taxonomy:
+ * every tag appears on at least 2 posts, and no tag collides with a category
+ * name. Click any filter chip on the public site and you get multiple results.
  *
- * Image URLs use Picsum (deterministic-by-seed: same image every time for the
- * same seed). They are placeholders, not actual flamenco imagery — the import
- * lets the demo work out of the box. To swap in real photos, use the post's
- * gallery in the admin UI.
+ *   Categories:  Palos (5)  Compás (4)  Historia (3)  Maestros (2)
+ *
+ *   Tags:        gitano (5)     12-beat (5)   baile (6)    cante (5)
+ *                sevilla (4)    jondo (3)     jerez (2)    cádiz (2)
+ *                andalucía (2)  siglo-xix (2) siglo-xx (2) palmas (2)
+ *                guitarra (2)   fusion (2)
+ *
+ * Bodies are in English (educational); titles, subtitles and summaries
+ * lean Spanish where it reads naturally.
  */
 
 return [
@@ -26,7 +30,7 @@ return [
         'subtitle' => 'The fastest, freest palo in flamenco',
         'summary' => 'Twelve beats, accents on three, six, eight, ten and twelve — bulerías is the rhythm flamenco gatherings always end with, and the one that demands the most from every participant.',
         'categories' => ['Palos', 'Compás'],
-        'tags' => ['bulerías', 'jerez', 'gitano', '12-beat', 'compás'],
+        'tags' => ['gitano', 'jerez', '12-beat', 'baile'],
         'author' => 'Lola Vega',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-bulerias-hero/1600/900',
         'gallery_image_urls' => [
@@ -60,7 +64,7 @@ MD,
         'subtitle' => 'The mother of all flamenco singing',
         'summary' => 'If flamenco has a foundational palo, it is the soleá — slow, dignified, twelve beats counted from one, and the structural template from which alegrías, bulerías and the cantiñas family all eventually grew.',
         'categories' => ['Palos'],
-        'tags' => ['soleá', 'gitano', 'jondo', 'sevilla', '12-beat', 'compás'],
+        'tags' => ['gitano', 'jondo', '12-beat', 'sevilla', 'baile', 'cante'],
         'author' => 'Lola Vega',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-solea-hero/1600/900',
         'gallery_image_urls' => [
@@ -99,7 +103,7 @@ MD,
         'subtitle' => 'The festive cantiña of the Atlantic coast',
         'summary' => 'The same 12-beat structure as soleá, the same accent pattern — but in major key, brighter, and full of references to the Virgen del Pilar and the Ebro river. The reason: alegrías comes from a war.',
         'categories' => ['Palos'],
-        'tags' => ['alegrías', 'cádiz', 'festero', '12-beat', 'compás', 'cantiñas'],
+        'tags' => ['cádiz', '12-beat', 'baile'],
         'author' => 'Carmen Ríos',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-alegrias-hero/1600/900',
         'gallery_image_urls' => [
@@ -141,7 +145,7 @@ MD,
         'subtitle' => 'The deepest of the deep',
         'summary' => 'Seguiriyas is the bottom of the well. It is what flamenco sounds like when it has nothing left to perform with — when there is only grief, and someone to sing it.',
         'categories' => ['Palos'],
-        'tags' => ['seguiriyas', 'gitano', 'jondo', '12-beat', 'compás'],
+        'tags' => ['gitano', 'jondo', '12-beat', 'cante', 'jerez'],
         'author' => 'Lola Vega',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-seguiriyas-hero/1600/900',
         'body' => <<<'MD'
@@ -179,7 +183,7 @@ MD,
         'subtitle' => 'How a centuries-long migration ended in Andalusia',
         'summary' => 'Flamenco is uniquely Andalusian, but the people most responsible for shaping it had been on the road for a thousand years before they arrived in Spain. A short history of the gitanos and their music.',
         'categories' => ['Historia'],
-        'tags' => ['gitano', 'andalucía', 'history', 'origins'],
+        'tags' => ['gitano', 'andalucía'],
         'author' => 'Carmen Ríos',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-romani-hero/1600/900',
         'gallery_image_urls' => [
@@ -214,7 +218,7 @@ MD,
         'subtitle' => 'How the 1860s commercialised an oral tradition',
         'summary' => 'Until the mid-19th century flamenco lived in private. Then a singer named Silverio Franconetti opened a café in Seville, and within twenty years the entire art had been professionalised, theatricalised, and irrevocably changed.',
         'categories' => ['Historia'],
-        'tags' => ['cafés-cantantes', 'sevilla', 'siglo-xix', 'silverio'],
+        'tags' => ['sevilla', 'siglo-xix', 'andalucía'],
         'author' => 'Diego Morales',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-cafes-hero/1600/900',
         'gallery_image_urls' => [
@@ -250,7 +254,7 @@ MD,
         'subtitle' => 'Cuando el flamenco se hizo arte',
         'summary' => 'The fifty years between the rise of the cafés cantantes and the First World War produced the figures, the repertoire, and the recordings that still define the canon of flamenco.',
         'categories' => ['Historia'],
-        'tags' => ['siglo-xix', 'silverio', 'sevilla', 'history'],
+        'tags' => ['sevilla', 'siglo-xix', 'cante'],
         'author' => 'Diego Morales',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-golden-hero/1600/900',
         'body' => <<<'MD'
@@ -282,7 +286,7 @@ MD,
         'subtitle' => 'Why flamenco rhythm sounds the way it does',
         'summary' => 'Flamenco is built on three rhythmic families: simple binary, simple ternary, and a 12-beat cycle that exists almost nowhere else in Western music. Here is how it works, and why beat one isn\'t always where you think it is.',
         'categories' => ['Compás'],
-        'tags' => ['compás', '12-beat', 'palmas', 'theory'],
+        'tags' => ['12-beat', 'palmas', 'baile', 'guitarra'],
         'author' => 'Diego Morales',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-compas12-hero/1600/900',
         'gallery_image_urls' => [
@@ -341,7 +345,7 @@ MD,
         'subtitle' => 'Flamenco\'s answer to the 4-beat',
         'summary' => 'Not every flamenco palo lives in twelves. The tangos family — tangos flamencos, tientos, tanguillos, zambra — is firmly in 4/4, and arguably the most internationally accessible corner of the form.',
         'categories' => ['Palos', 'Compás'],
-        'tags' => ['tangos', 'tientos', 'compás', '4-beat'],
+        'tags' => ['baile', 'sevilla', 'cante'],
         'author' => 'Carmen Ríos',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-tangos-hero/1600/900',
         'gallery_image_urls' => [
@@ -379,7 +383,7 @@ MD,
         'subtitle' => 'A beginner\'s guide to the most important percussion in flamenco',
         'summary' => 'Hand clapping is not optional in flamenco — it is the rhythm. Two types, three roles, and an unwritten rule about when to keep your mouth shut. The one skill every flamenco beginner gets wrong before getting right.',
         'categories' => ['Compás'],
-        'tags' => ['palmas', 'compás', 'jaleo', 'beginner'],
+        'tags' => ['palmas', 'baile'],
         'author' => 'Lola Vega',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-palmas-hero/1600/900',
         'body' => <<<'MD'
@@ -422,7 +426,7 @@ MD,
         'subtitle' => 'The voice that broke and remade flamenco',
         'summary' => 'José Monge Cruz, born in San Fernando in 1950, recorded for two decades, died at forty-one, and is the only flamenco singer most non-flamenco listeners can name. His influence on the form is impossible to overstate.',
         'categories' => ['Maestros'],
-        'tags' => ['camarón', 'cante', 'jondo', 'gitano', 'siglo-xx'],
+        'tags' => ['gitano', 'jondo', 'cante', 'siglo-xx', 'fusion'],
         'author' => 'Diego Morales',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-camaron-hero/1600/900',
         'gallery_image_urls' => [
@@ -456,7 +460,7 @@ MD,
         'subtitle' => 'Six strings, one revolution',
         'summary' => 'Francisco Sánchez Gómez, from Algeciras, took the flamenco guitar from accompaniment instrument to concert virtuoso instrument in a single career, and along the way introduced the cajón, jazz harmony and Latin American rhythms into the flamenco vocabulary.',
         'categories' => ['Maestros'],
-        'tags' => ['paco-de-lucía', 'guitarra', 'fusion', 'siglo-xx', 'cádiz'],
+        'tags' => ['cádiz', 'guitarra', 'siglo-xx', 'fusion'],
         'author' => 'Diego Morales',
         'hero_image_url' => 'https://picsum.photos/seed/qwikblog-paco-hero/1600/900',
         'gallery_image_urls' => [
